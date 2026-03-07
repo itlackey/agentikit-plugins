@@ -1,6 +1,6 @@
 {
   "name": "agentikit-opencode",
-  "version": "0.8.0",
+  "version": "0.0.8",
   "type": "module",
   "description": "OpenCode plugin for Agentikit - search, open, and run extension assets via the agentikit CLI.",
   "keywords": [
