@@ -19,8 +19,7 @@ claude plugin add agentikit-claude
 ```
 
 Provides:
-- **Skill** (`stash`) — Claude automatically uses the agentikit CLI when you ask about stash assets
-- **Commands** — `/search`, `/open`, `/run` slash commands
+- **Agentikit Skill** — Claude automatically uses the agentikit CLI when you ask about stash assets
 
 ### agentikit-opencode
 
@@ -44,10 +43,6 @@ Provides four tools:
 - `agentikit_run` — run a tool by ref
 - `agentikit_index` — build/rebuild the search index
 
-## Prerequisites
-
-The `agentikit` CLI must be installed and available on PATH. Install it from the [agentikit repo](https://github.com/itlackey/agentikit).
-
 ## Stash model
 
 Set a stash path via `AGENTIKIT_STASH_DIR`:
@@ -65,6 +60,17 @@ $AGENTIKIT_STASH_DIR/
 ├── commands/   # markdown files
 ├── agents/     # markdown files
 └── knowledge/  # markdown files
+```
+
+## Prerequisites
+
+The `agentikit` CLI must be installed and available on PATH. Install it from the [agentikit repo](https://github.com/itlackey/agentikit). If not available on PATH, the agent will install it when needed.
+
+```sh
+# macOS / Linux
+curl -fsSL https://raw.githubusercontent.com/itlackey/agentikit/main/install.sh | bash
+# PowerShell (Windows)
+irm https://raw.githubusercontent.com/itlackey/agentikit/main/install.ps1 -OutFile install.ps1; ./install.ps1
 ```
 
 ## Docs
