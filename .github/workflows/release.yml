@@ -1,0 +1,115 @@
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version to release (e.g. 1.2.3). Bumps both packages, publishes to npm, and creates a GitHub release."
+        required: true
+        type: string
+
+jobs:
+  version:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    outputs:
+      tag: ${{ steps.tag.outputs.tag }}
+    steps:
+      - name: Ensure workflow runs from default branch
+        if: ${{ github.ref_name != github.event.repository.default_branch }}
+        run: |
+          echo "Releases must be dispatched from ${{ github.event.repository.default_branch }}."
+          exit 1
+
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Bump versions
+        run: |
+          cd claude && npm version "${{ inputs.version }}" --no-git-tag-version && cd ..
+          cd opencode && npm version "${{ inputs.version }}" --no-git-tag-version && cd ..
+
+      - name: Commit and tag
+        id: tag
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add claude/package.json opencode/package.json
+          git commit -m "chore: bump version to ${{ inputs.version }}"
+          git tag "v${{ inputs.version }}"
+          git push
+          git push origin "v${{ inputs.version }}"
+          echo "tag=v${{ inputs.version }}" >> "$GITHUB_OUTPUT"
+
+  publish-claude:
+    needs: version
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.version.outputs.tag }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          registry-url: https://registry.npmjs.org
+
+      - run: npm install -g npm@latest
+
+      - name: Publish agentikit-claude
+        working-directory: claude
+        run: npm publish --provenance --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+  publish-opencode:
+    needs: version
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.version.outputs.tag }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          registry-url: https://registry.npmjs.org
+
+      - run: npm install -g npm@latest
+
+      - name: Publish agentikit-opencode
+        working-directory: opencode
+        run: npm publish --provenance --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+  github-release:
+    needs: [version, publish-claude, publish-opencode]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.version.outputs.tag }}
+
+      - name: Create GitHub release
+        run: |
+          gh release create "${{ needs.version.outputs.tag }}" \
+            --repo "${{ github.repository }}" \
+            --title "${{ needs.version.outputs.tag }}" \
+            --generate-notes
+        env:
+          GH_TOKEN: ${{ github.token }}

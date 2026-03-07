@@ -1,0 +1,74 @@
+# Agentikit Plugins
+
+Platform-specific plugins for the [Agentikit](https://github.com/itlackey/agentikit) CLI. Both packages are thin wrappers that call the `agentikit` CLI to **search**, **open**, and **run** extension assets from a stash directory.
+
+## Packages
+
+### agentikit-claude
+
+Claude Code plugin providing a skill and slash commands.
+
+```sh
+npm install agentikit-claude
+```
+
+Install as a Claude Code plugin:
+
+```sh
+claude plugin add agentikit-claude
+```
+
+Provides:
+- **Skill** (`stash`) — Claude automatically uses the agentikit CLI when you ask about stash assets
+- **Commands** — `/search`, `/open`, `/run` slash commands
+
+### agentikit-opencode
+
+OpenCode plugin registering tools that call the agentikit CLI.
+
+```sh
+npm install agentikit-opencode
+```
+
+Add to your OpenCode config (`opencode.json`):
+
+```json
+{
+  "plugin": ["agentikit-opencode"]
+}
+```
+
+Provides four tools:
+- `agentikit_search` — search the stash
+- `agentikit_open` — open a stash asset by ref
+- `agentikit_run` — run a tool by ref
+- `agentikit_index` — build/rebuild the search index
+
+## Prerequisites
+
+The `agentikit` CLI must be installed and available on PATH. Install it from the [agentikit repo](https://github.com/itlackey/agentikit).
+
+## Stash model
+
+Set a stash path via `AGENTIKIT_STASH_DIR`:
+
+```sh
+export AGENTIKIT_STASH_DIR=/abs/path/to/your-stash
+```
+
+Expected layout:
+
+```
+$AGENTIKIT_STASH_DIR/
+├── tools/      # executable scripts (.sh, .ts, .js, .ps1, .cmd, .bat)
+├── skills/     # skill directories containing SKILL.md
+├── commands/   # markdown files
+├── agents/     # markdown files
+└── knowledge/  # markdown files
+```
+
+## Docs
+
+- **Agentikit CLI**: [github.com/itlackey/agentikit](https://github.com/itlackey/agentikit)
+- **OpenCode**: [Plugins](https://opencode.ai/docs/plugins/) · [Custom tools](https://opencode.ai/docs/custom-tools/)
+- **Claude Code**: [Plugins](https://code.claude.com/docs/en/plugins) · [Skills](https://code.claude.com/docs/en/skills)

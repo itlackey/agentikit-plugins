@@ -1,0 +1,37 @@
+{
+  "name": "agentikit-opencode",
+  "version": "0.0.7",
+  "type": "module",
+  "description": "OpenCode plugin for Agentikit - search, open, and run extension assets via the agentikit CLI.",
+  "keywords": [
+    "opencode",
+    "opencode-ai",
+    "opencode-plugin",
+    "opencode-extensions",
+    "agentikit",
+    "ai-agent",
+    "developer-tools",
+    "plugin"
+  ],
+  "homepage": "https://github.com/itlackey/agentikit-plugins#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/itlackey/agentikit-plugins.git",
+    "directory": "opencode"
+  },
+  "bugs": {
+    "url": "https://github.com/itlackey/agentikit-plugins/issues"
+  },
+  "license": "CC-BY-4.0",
+  "files": [
+    "index.ts",
+    "README.md"
+  ],
+  "main": "./index.ts",
+  "publishConfig": {
+    "access": "public"
+  },
+  "dependencies": {
+    "@opencode-ai/plugin": "^1.2.20"
+  }
+}

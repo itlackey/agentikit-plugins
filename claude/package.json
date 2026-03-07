@@ -1,0 +1,31 @@
+{
+  "name": "agentikit-claude",
+  "version": "0.0.7",
+  "description": "Claude Code plugin for Agentikit - search, open, and run extension assets via the agentikit CLI.",
+  "keywords": [
+    "claude-code",
+    "claude-code-plugin",
+    "agentikit",
+    "ai-agent",
+    "developer-tools",
+    "plugin"
+  ],
+  "homepage": "https://github.com/itlackey/agentikit-plugins#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/itlackey/agentikit-plugins.git",
+    "directory": "claude"
+  },
+  "bugs": {
+    "url": "https://github.com/itlackey/agentikit-plugins/issues"
+  },
+  "license": "CC-BY-4.0",
+  "files": [
+    ".claude-plugin",
+    "skills",
+    "README.md"
+  ],
+  "publishConfig": {
+    "access": "public"
+  }
+}
