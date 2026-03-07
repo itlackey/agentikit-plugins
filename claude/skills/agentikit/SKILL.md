@@ -1,11 +1,11 @@
 ---
 name: agentikit
-description: Search, open, and run extension assets from an Agentikit stash directory. Use when the user wants to find tools, skills, commands, or agents in their stash, view asset contents, or execute stash tools.
+description: Search and show extension assets from an Agentikit stash directory. Use when the user wants to find tools, skills, commands, agents, or knowledge in their stash, or view asset contents.
 ---
 
 # Agentikit Stash
 
-You have access to the `agentikit` CLI to manage extension assets from a stash directory.
+You have access to the `akm` CLI (Agentikit Manager) to manage extension assets from a stash directory.
 
 The stash directory is configured via the `AGENTIKIT_STASH_DIR` environment variable and contains:
 
@@ -13,6 +13,7 @@ The stash directory is configured via the `AGENTIKIT_STASH_DIR` environment vari
 - **skills/** — skill directories containing SKILL.md
 - **commands/** — markdown template files
 - **agents/** — markdown agent definition files
+- **knowledge/** — markdown knowledge files
 
 ## Commands
 
@@ -21,25 +22,25 @@ The stash directory is configured via the `AGENTIKIT_STASH_DIR` environment vari
 Scan stash directories, auto-generate missing `.stash.json` metadata, and build a semantic search index.
 
 ```bash
-agentikit index
+akm index [--full]
 ```
 
-Run this after adding new extensions to enable semantic search ranking.
+Use `--full` to force a full reindex instead of incremental. Run this after adding new extensions to enable semantic search ranking.
 
 ### Search the stash
 
-Find assets using a two-stage search pipeline: ripgrep pre-filters `.stash.json` metadata files for fast candidate discovery, then TF-IDF ranks results by semantic relevance. Falls back to name substring matching when no index exists.
+Find assets using a hybrid search pipeline: semantic embeddings + TF-IDF ranking. Falls back to name substring matching when no index exists.
 
 ```bash
-agentikit search [query] [--type tool|skill|command|agent|any] [--limit N]
+akm search [query] [--type tool|skill|command|agent|knowledge|any] [--limit N]
 ```
 
-### Open an asset
+### Show an asset
 
-Retrieve the full content/payload of an asset using its `openRef` from search results.
+Retrieve the full content/payload of an asset using its ref from search results.
 
 ```bash
-agentikit open <openRef>
+akm show <ref>
 ```
 
 Returns type-specific payloads:
@@ -47,27 +48,28 @@ Returns type-specific payloads:
 - **command** → markdown template + description
 - **agent** → prompt + description, toolPolicy, modelHint
 - **tool** → execution command and kind
+- **knowledge** → full markdown content (supports view modes: toc, frontmatter, section, lines)
 
-### Run a tool
+### Configuration
 
-Execute a tool asset by its `openRef`. Only tool refs are supported.
+Show or update configuration stored in the stash directory.
 
 ```bash
-agentikit run <openRef>
+akm config                    # Show current config
+akm config --set key=value    # Update a config key
 ```
 
-Returns the tool's stdout/stderr output and exit code.
+Configurable keys: `semanticSearch`, `additionalStashDirs`, `embedding`, `llm`.
 
 ## Dependencies
 
-`agentikit init` will auto-install [ripgrep](https://github.com/BurntSushi/ripgrep) to `stash/bin/` if not already on PATH. Ripgrep is used for fast candidate filtering during search.
+`akm init` will auto-install [ripgrep](https://github.com/BurntSushi/ripgrep) to `stash/bin/` if not already on PATH. Ripgrep is used for fast candidate filtering during search.
 
 ## Workflow
 
-1. Initialize: `agentikit init` (creates stash dirs, installs ripgrep)
-2. Build the index: `agentikit index`
-3. Search for assets: `agentikit search "deploy" --type tool`
-4. Inspect a result: `agentikit open <openRef>`
-5. Run a tool: `agentikit run <openRef>`
+1. Initialize: `akm init` (creates stash dirs, installs ripgrep)
+2. Build the index: `akm index`
+3. Search for assets: `akm search "deploy" --type tool`
+4. Inspect a result: `akm show <ref>`
 
 All output is JSON for easy parsing.

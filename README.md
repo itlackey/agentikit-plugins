@@ -1,6 +1,6 @@
 # Agentikit Plugins
 
-Platform-specific plugins for the [Agentikit](https://github.com/itlackey/agentikit) CLI. Both packages are thin wrappers that call the `agentikit` CLI to **search**, **open**, and **run** extension assets from a stash directory.
+Platform-specific plugins for the [Agentikit](https://github.com/itlackey/agentikit) CLI. Both packages are thin wrappers that call the `akm` CLI to **search** and **show** extension assets from a stash directory.
 
 ## Packages
 
@@ -19,11 +19,11 @@ claude plugin add agentikit-claude
 ```
 
 Provides:
-- **Agentikit Skill** — Claude automatically uses the agentikit CLI when you ask about stash assets
+- **Agentikit Skill** — Claude automatically uses the akm CLI when you ask about stash assets
 
 ### agentikit-opencode
 
-OpenCode plugin registering tools that call the agentikit CLI.
+OpenCode plugin registering tools that call the akm CLI.
 
 ```sh
 npm install agentikit-opencode
@@ -37,10 +37,9 @@ Add to your OpenCode config (`opencode.json`):
 }
 ```
 
-Provides four tools:
+Provides three tools:
 - `agentikit_search` — search the stash
-- `agentikit_open` — open a stash asset by ref
-- `agentikit_run` — run a tool by ref
+- `agentikit_show` — show a stash asset by ref
 - `agentikit_index` — build/rebuild the search index
 
 ## Stash model
@@ -64,7 +63,7 @@ $AGENTIKIT_STASH_DIR/
 
 ## Prerequisites
 
-The `agentikit` CLI must be installed and available on PATH. Install it from the [agentikit repo](https://github.com/itlackey/agentikit). If not available on PATH, the agent will install it when needed.
+The `akm` CLI must be installed and available on PATH. Install it from the [agentikit repo](https://github.com/itlackey/agentikit). If not available on PATH, the agent will install it when needed.
 
 ```sh
 # macOS / Linux

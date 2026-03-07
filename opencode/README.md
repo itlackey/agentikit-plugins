@@ -1,6 +1,6 @@
 # agentikit-opencode
 
-OpenCode plugin for the [Agentikit](https://github.com/itlackey/agentikit) CLI. Registers tools that let your AI agent **search**, **open**, and **run** extension assets from a stash directory.
+OpenCode plugin for the [Agentikit](https://github.com/itlackey/agentikit) CLI. Registers tools that let your AI agent **search** and **show** extension assets from a stash directory.
 
 ## Installation
 
@@ -17,13 +17,12 @@ Add to your OpenCode config (`opencode.json`):
 | Tool | Description |
 |------|-------------|
 | `agentikit_search` | Search the stash for tools, skills, commands, agents, and knowledge |
-| `agentikit_open` | Open a stash asset by its ref |
-| `agentikit_run` | Run a tool by its ref |
+| `agentikit_show` | Show a stash asset by its ref |
 | `agentikit_index` | Build or rebuild the search index |
 
 ## Prerequisites
 
-The `agentikit` CLI must be installed and available on PATH. Install it from the [agentikit repo](https://github.com/itlackey/agentikit).
+The `akm` CLI must be installed and available on PATH. Install it from the [agentikit repo](https://github.com/itlackey/agentikit).
 
 ```sh
 # macOS / Linux

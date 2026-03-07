@@ -3,7 +3,7 @@ import { execFileSync } from "node:child_process"
 
 function runCli(args: string[]): string {
   try {
-    return execFileSync("agentikit", args, {
+    return execFileSync("akm", args, {
       encoding: "utf8",
       timeout: 60_000,
     })
@@ -32,10 +32,10 @@ export const AgentikitPlugin: Plugin = async ({ directory }) => ({
         return runCli(args)
       },
     }),
-    agentikit_open: tool({
-      description: "Open a stash asset by ref. For knowledge assets, use view_mode to retrieve specific content (toc, section, lines, frontmatter).",
+    agentikit_show: tool({
+      description: "Show a stash asset by ref. For knowledge assets, use view_mode to retrieve specific content (toc, section, lines, frontmatter).",
       args: {
-        ref: tool.schema.string().describe("Open reference returned by agentikit_search."),
+        ref: tool.schema.string().describe("Asset reference returned by agentikit_search."),
         view_mode: tool.schema
           .enum(["full", "toc", "frontmatter", "section", "lines"])
           .optional()
@@ -48,21 +48,12 @@ export const AgentikitPlugin: Plugin = async ({ directory }) => ({
           .describe("End line number, 1-based inclusive (for view_mode 'lines')."),
       },
       async execute({ ref, view_mode, heading, start_line, end_line }) {
-        const args = ["open", ref]
+        const args = ["show", ref]
         if (view_mode) args.push("--view", view_mode)
         if (heading) args.push("--heading", heading)
         if (start_line != null) args.push("--start", String(start_line))
         if (end_line != null) args.push("--end", String(end_line))
         return runCli(args)
-      },
-    }),
-    agentikit_run: tool({
-      description: "Run a tool from the Agentikit stash by its openRef. Only tool refs are supported.",
-      args: {
-        ref: tool.schema.string().describe("Open reference of a tool returned by agentikit_search."),
-      },
-      async execute({ ref }) {
-        return runCli(["run", ref])
       },
     }),
     agentikit_index: tool({

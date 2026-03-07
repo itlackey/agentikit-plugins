@@ -1,6 +1,6 @@
 {
   "name": "agentikit",
-  "description": "Search, open, and run extension assets from an Agentikit stash directory. Provides tools, skills, commands, and agents management for AI coding assistants.",
+  "description": "Search and show extension assets from an Agentikit stash directory. Provides tools, skills, commands, agents, and knowledge management for AI coding assistants.",
   "version": "0.0.1",
   "author": {
     "name": "itlackey",

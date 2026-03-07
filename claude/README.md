@@ -1,6 +1,6 @@
 # agentikit-claude
 
-Claude Code plugin for the [Agentikit](https://github.com/itlackey/agentikit) CLI. Provides a skill that teaches Claude to **search**, **open**, and **run** extension assets from a stash directory.
+Claude Code plugin for the [Agentikit](https://github.com/itlackey/agentikit) CLI. Provides a skill that teaches Claude to **search** and **show** extension assets from a stash directory.
 
 ## Installation
 
@@ -18,13 +18,13 @@ claude --plugin-dir ./node_modules/agentikit-claude
 
 ## What's included
 
-- **Agentikit Skill** — Claude automatically uses the `agentikit` CLI when you ask about stash assets
+- **Agentikit Skill** — Claude automatically uses the `akm` CLI when you ask about stash assets
 
-The skill teaches Claude the full CLI workflow: `agentikit init`, `agentikit index`, `agentikit search`, `agentikit open`, and `agentikit run`.
+The skill teaches Claude the full CLI workflow: `akm init`, `akm index`, `akm search`, and `akm show`.
 
 ## Prerequisites
 
-The `agentikit` CLI must be installed and available on PATH. Install it from the [agentikit repo](https://github.com/itlackey/agentikit).
+The `akm` CLI must be installed and available on PATH. Install it from the [agentikit repo](https://github.com/itlackey/agentikit).
 
 ```sh
 # macOS / Linux

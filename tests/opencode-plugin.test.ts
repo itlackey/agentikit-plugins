@@ -39,14 +39,13 @@ describe("agentikit-opencode plugin", () => {
       expect(hooks.tool).toBeDefined()
     })
 
-    it("registers all four tools", async () => {
+    it("registers all three tools", async () => {
       const hooks = await AgentikitPlugin(createPluginInput())
       const toolNames = Object.keys(hooks.tool!)
       expect(toolNames).toContain("agentikit_search")
-      expect(toolNames).toContain("agentikit_open")
-      expect(toolNames).toContain("agentikit_run")
+      expect(toolNames).toContain("agentikit_show")
       expect(toolNames).toContain("agentikit_index")
-      expect(toolNames).toHaveLength(4)
+      expect(toolNames).toHaveLength(3)
     })
   })
 
@@ -74,20 +73,14 @@ describe("agentikit-opencode plugin", () => {
       expect(search.args.limit).toBeDefined()
     })
 
-    it("agentikit_open has required args schema", async () => {
+    it("agentikit_show has required args schema", async () => {
       const hooks = await AgentikitPlugin(createPluginInput())
-      const open = hooks.tool!.agentikit_open
-      expect(open.args.ref).toBeDefined()
-      expect(open.args.view_mode).toBeDefined()
-      expect(open.args.heading).toBeDefined()
-      expect(open.args.start_line).toBeDefined()
-      expect(open.args.end_line).toBeDefined()
-    })
-
-    it("agentikit_run has ref arg", async () => {
-      const hooks = await AgentikitPlugin(createPluginInput())
-      const run = hooks.tool!.agentikit_run
-      expect(run.args.ref).toBeDefined()
+      const show = hooks.tool!.agentikit_show
+      expect(show.args.ref).toBeDefined()
+      expect(show.args.view_mode).toBeDefined()
+      expect(show.args.heading).toBeDefined()
+      expect(show.args.start_line).toBeDefined()
+      expect(show.args.end_line).toBeDefined()
     })
 
     it("agentikit_index has no required args", async () => {
@@ -106,7 +99,7 @@ describe("agentikit-opencode plugin", () => {
       )
       expect(result).toBe("mock output")
       expect(mockExecFileSync).toHaveBeenCalledWith(
-        "agentikit",
+        "akm",
         ["search", "test-query"],
         expect.objectContaining({ encoding: "utf8" }),
       )
@@ -119,7 +112,7 @@ describe("agentikit-opencode plugin", () => {
         {} as any,
       )
       expect(mockExecFileSync).toHaveBeenCalledWith(
-        "agentikit",
+        "akm",
         ["search", "hello", "--type", "skill"],
         expect.objectContaining({ encoding: "utf8" }),
       )
@@ -132,60 +125,47 @@ describe("agentikit-opencode plugin", () => {
         {} as any,
       )
       expect(mockExecFileSync).toHaveBeenCalledWith(
-        "agentikit",
+        "akm",
         ["search", "hello", "--limit", "5"],
         expect.objectContaining({ encoding: "utf8" }),
       )
     })
 
-    it("agentikit_open calls CLI with ref", async () => {
+    it("agentikit_show calls CLI with ref", async () => {
       const hooks = await AgentikitPlugin(createPluginInput())
-      await hooks.tool!.agentikit_open.execute(
+      await hooks.tool!.agentikit_show.execute(
         { ref: "tool://my-tool" } as any,
         {} as any,
       )
       expect(mockExecFileSync).toHaveBeenCalledWith(
-        "agentikit",
-        ["open", "tool://my-tool"],
+        "akm",
+        ["show", "tool://my-tool"],
         expect.objectContaining({ encoding: "utf8" }),
       )
     })
 
-    it("agentikit_open passes view_mode and heading", async () => {
+    it("agentikit_show passes view_mode and heading", async () => {
       const hooks = await AgentikitPlugin(createPluginInput())
-      await hooks.tool!.agentikit_open.execute(
+      await hooks.tool!.agentikit_show.execute(
         { ref: "knowledge://doc", view_mode: "section", heading: "Install" } as any,
         {} as any,
       )
       expect(mockExecFileSync).toHaveBeenCalledWith(
-        "agentikit",
-        ["open", "knowledge://doc", "--view", "section", "--heading", "Install"],
+        "akm",
+        ["show", "knowledge://doc", "--view", "section", "--heading", "Install"],
         expect.objectContaining({ encoding: "utf8" }),
       )
     })
 
-    it("agentikit_open passes line range", async () => {
+    it("agentikit_show passes line range", async () => {
       const hooks = await AgentikitPlugin(createPluginInput())
-      await hooks.tool!.agentikit_open.execute(
+      await hooks.tool!.agentikit_show.execute(
         { ref: "knowledge://doc", view_mode: "lines", start_line: 10, end_line: 20 } as any,
         {} as any,
       )
       expect(mockExecFileSync).toHaveBeenCalledWith(
-        "agentikit",
-        ["open", "knowledge://doc", "--view", "lines", "--start", "10", "--end", "20"],
-        expect.objectContaining({ encoding: "utf8" }),
-      )
-    })
-
-    it("agentikit_run calls CLI with ref", async () => {
-      const hooks = await AgentikitPlugin(createPluginInput())
-      await hooks.tool!.agentikit_run.execute(
-        { ref: "tool://my-script" } as any,
-        {} as any,
-      )
-      expect(mockExecFileSync).toHaveBeenCalledWith(
-        "agentikit",
-        ["run", "tool://my-script"],
+        "akm",
+        ["show", "knowledge://doc", "--view", "lines", "--start", "10", "--end", "20"],
         expect.objectContaining({ encoding: "utf8" }),
       )
     })
@@ -194,7 +174,7 @@ describe("agentikit-opencode plugin", () => {
       const hooks = await AgentikitPlugin(createPluginInput())
       await hooks.tool!.agentikit_index.execute({} as any, {} as any)
       expect(mockExecFileSync).toHaveBeenCalledWith(
-        "agentikit",
+        "akm",
         ["index"],
         expect.objectContaining({ encoding: "utf8" }),
       )
@@ -202,7 +182,7 @@ describe("agentikit-opencode plugin", () => {
 
     it("returns JSON error when CLI fails", async () => {
       mockExecFileSync.mockImplementation(() => {
-        throw new Error("command not found: agentikit")
+        throw new Error("command not found: akm")
       })
       const hooks = await AgentikitPlugin(createPluginInput())
       const result = await hooks.tool!.agentikit_search.execute(
