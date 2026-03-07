@@ -1,6 +1,6 @@
 {
   "name": "agentikit-claude",
-  "version": "0.0.7",
+  "version": "0.8.0",
   "description": "Claude Code plugin for Agentikit - search, open, and run extension assets via the agentikit CLI.",
   "keywords": [
     "claude-code",
