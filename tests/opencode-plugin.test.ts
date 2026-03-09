@@ -61,7 +61,9 @@ describe("agentikit-opencode plugin", () => {
       expect(toolNames).toContain("akm_index")
       expect(toolNames).toContain("akm_agent")
       expect(toolNames).toContain("akm_cmd")
-      expect(toolNames).toHaveLength(5)
+      expect(toolNames).toContain("akm_add")
+      expect(toolNames).toContain("akm_list")
+      expect(toolNames).toHaveLength(7)
     })
   })
 
@@ -113,6 +115,18 @@ describe("agentikit-opencode plugin", () => {
       expect(dispatch.args.task_prompt).toBeDefined()
       expect(dispatch.args.dispatch_agent).toBeDefined()
       expect(dispatch.args.as_subtask).toBeDefined()
+    })
+
+    it("akm_add has required args schema", async () => {
+      const hooks = await AgentikitPlugin(createPluginInput())
+      const add = hooks.tool!.akm_add
+      expect(add.args.package_ref).toBeDefined()
+    })
+
+    it("akm_list has no required args", async () => {
+      const hooks = await AgentikitPlugin(createPluginInput())
+      const list = hooks.tool!.akm_list
+      expect(Object.keys(list.args)).toHaveLength(0)
     })
 
     it("akm_cmd has required args schema", async () => {
@@ -202,6 +216,69 @@ describe("agentikit-opencode plugin", () => {
       expect(mockExecFileSync).toHaveBeenCalledWith(
         "akm",
         ["show", "knowledge://doc", "--view", "lines", "--start", "10", "--end", "20"],
+        expect.objectContaining({ encoding: "utf8" }),
+      )
+    })
+
+    it("akm_add calls CLI with package ref", async () => {
+      const hooks = await AgentikitPlugin(createPluginInput())
+      const result = await hooks.tool!.akm_add.execute(
+        { package_ref: "my-kit" } as any,
+        {} as any,
+      )
+      expect(result).toBe("mock output")
+      expect(mockExecFileSync).toHaveBeenCalledWith(
+        "akm",
+        ["add", "my-kit"],
+        expect.objectContaining({ encoding: "utf8" }),
+      )
+    })
+
+    it("akm_add handles github refs", async () => {
+      const hooks = await AgentikitPlugin(createPluginInput())
+      await hooks.tool!.akm_add.execute(
+        { package_ref: "github:itlackey/my-kit" } as any,
+        {} as any,
+      )
+      expect(mockExecFileSync).toHaveBeenCalledWith(
+        "akm",
+        ["add", "github:itlackey/my-kit"],
+        expect.objectContaining({ encoding: "utf8" }),
+      )
+    })
+
+    it("akm_list calls CLI with no extra args", async () => {
+      const hooks = await AgentikitPlugin(createPluginInput())
+      await hooks.tool!.akm_list.execute({} as any, {} as any)
+      expect(mockExecFileSync).toHaveBeenCalledWith(
+        "akm",
+        ["list"],
+        expect.objectContaining({ encoding: "utf8" }),
+      )
+    })
+
+    it("akm_search passes source filter", async () => {
+      const hooks = await AgentikitPlugin(createPluginInput())
+      await hooks.tool!.akm_search.execute(
+        { query: "hello", source: "registry" } as any,
+        {} as any,
+      )
+      expect(mockExecFileSync).toHaveBeenCalledWith(
+        "akm",
+        ["search", "hello", "--source", "registry"],
+        expect.objectContaining({ encoding: "utf8" }),
+      )
+    })
+
+    it("akm_search supports script type filter", async () => {
+      const hooks = await AgentikitPlugin(createPluginInput())
+      await hooks.tool!.akm_search.execute(
+        { query: "deploy", type: "script" } as any,
+        {} as any,
+      )
+      expect(mockExecFileSync).toHaveBeenCalledWith(
+        "akm",
+        ["search", "deploy", "--type", "script"],
         expect.objectContaining({ encoding: "utf8" }),
       )
     })

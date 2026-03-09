@@ -14,6 +14,12 @@ The stash directory is configured via the `AKM_STASH_DIR` environment variable a
 - **commands/** — markdown template files
 - **agents/** — markdown agent definition files
 - **knowledge/** — markdown knowledge files
+- **scripts/** — general-purpose scripts (.py, .rb, .go, .pl, .php, .lua, .r, .swift, .kt)
+
+Assets are resolved from multiple sources in priority order:
+1. **working** — your local stash directory (editable)
+2. **mounted** — additional directories via `mountedStashDirs` config
+3. **installed** — kits installed from the registry via `akm add`
 
 ## Commands
 
@@ -32,7 +38,7 @@ Use `--full` to force a full reindex instead of incremental. Run this after addi
 Find assets using a hybrid search pipeline: semantic embeddings + TF-IDF ranking. Falls back to name substring matching when no index exists.
 
 ```bash
-akm search [query] [--type tool|skill|command|agent|knowledge|any] [--limit N]
+akm search [query] [--type tool|skill|command|agent|knowledge|script|any] [--limit N] [--source local|registry|both]
 ```
 
 ### Show an asset
@@ -49,17 +55,35 @@ Returns type-specific payloads:
 - **agent** → prompt + description, toolPolicy, modelHint
 - **tool** → execution command and kind
 - **knowledge** → full markdown content (supports view modes: toc, frontmatter, section, lines)
+- **script** → execution command and interpreter
 
 ### Configuration
 
-Show or update configuration stored in the stash directory.
+Show or update configuration stored at `~/.config/agentikit/config.json` (XDG standard).
 
 ```bash
-akm config                    # Show current config
-akm config --set key=value    # Update a config key
+akm config list                 # Show current config
+akm config get <key>            # Get a config value
+akm config set <key> <value>    # Set a config value
+akm config unset <key>          # Remove a config value
+akm config providers            # List configured providers
+akm config use <provider>       # Switch active provider
 ```
 
-Configurable keys: `semanticSearch`, `additionalStashDirs`, `embedding`, `llm`.
+Configurable keys: `semanticSearch`, `mountedStashDirs`, `embedding`, `llm`.
+
+### Registry Management
+
+Discover and install kits from npm or GitHub registries.
+
+```bash
+akm add <package>                 # Install from npm or github:<owner>/<repo>
+akm list                          # List installed registry kits
+akm remove <id>                   # Remove an installed kit
+akm update [id]                   # Update installed kits
+```
+
+Installed kits become searchable alongside local stash assets. Use `--source registry` with search to query only remote registries.
 
 ## Dependencies
 
@@ -71,6 +95,7 @@ Configurable keys: `semanticSearch`, `additionalStashDirs`, `embedding`, `llm`.
 2. Build the index: `akm index`
 3. Search for assets: `akm search "deploy" --type tool`
 4. Inspect a result: `akm show <ref>`
+5. Install kits: `akm add <package>` (optional)
 
 All output is JSON for easy parsing.
 

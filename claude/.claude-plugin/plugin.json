@@ -1,7 +1,7 @@
 {
   "name": "agentikit",
-  "description": "Search and show extension assets from an Agentikit stash directory. Provides tools, skills, commands, agents, and knowledge management for AI coding assistants.",
-  "version": "0.1.0",
+  "description": "Search, show, and manage extension assets from Agentikit stash directories and registries.",
+  "version": "0.2.0",
   "author": {
     "name": "itlackey",
     "url": "https://github.com/itlackey"
@@ -16,6 +16,8 @@
     "skills",
     "commands",
     "agents",
+    "scripts",
+    "registry",
     "plugin"
   ]
 }

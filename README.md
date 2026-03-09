@@ -46,12 +46,14 @@ Add to your OpenCode config (`opencode.json`):
 }
 ```
 
-Provides four tools:
+Provides seven tools:
 - `akm_search` — search the stash
 - `akm_show` — show a stash asset by ref
 - `akm_index` — build/rebuild the search index
 - `akm_agent` — dispatch stash `agent:*` resources into OpenCode sessions
 - `akm_cmd` — execute stash `command:*` templates through OpenCode SDK sessions
+- `akm_add` — install kits from npm or GitHub registries
+- `akm_list` — list installed registry kits
 
 ## Stash model
 
@@ -66,11 +68,18 @@ Expected layout:
 ```
 $AKM_STASH_DIR/
 ├── tools/      # executable scripts (.sh, .ts, .js, .ps1, .cmd, .bat)
+├── scripts/    # general-purpose scripts (.py, .rb, .go, .pl, .php, .lua, .r, .swift, .kt)
 ├── skills/     # skill directories containing SKILL.md
 ├── commands/   # markdown files
 ├── agents/     # markdown files
 └── knowledge/  # markdown files
 ```
+
+Assets are resolved from three source types: **working** (local stash, editable), **mounted** (additional dirs via config), and **installed** (registry kits via `akm add`).
+
+## Configuration
+
+Config is stored at `~/.config/agentikit/config.json` (XDG standard).
 
 ## Prerequisites
 

@@ -80,11 +80,14 @@ Expected layout:
 ```
 $AKM_STASH_DIR/
 ├── tools/      # executable scripts (.sh, .ts, .js, .ps1, .cmd, .bat)
+├── scripts/    # general-purpose scripts (.py, .rb, .go, .pl, .php, .lua, .r, .swift, .kt)
 ├── skills/     # skill directories containing SKILL.md
 ├── commands/   # markdown files
 ├── agents/     # markdown files
 └── knowledge/  # markdown files
 ```
+
+Assets are resolved from three source types: **working** (local stash, editable), **mounted** (additional dirs via config), and **installed** (registry kits via `akm add`).
 
 ## Docs
 

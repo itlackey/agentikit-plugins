@@ -14,7 +14,7 @@ function runCli(args: string[]): string {
 }
 
 type CliError = { ok: false; error: string }
-type AssetType = "tool" | "skill" | "command" | "agent" | "knowledge"
+type AssetType = "tool" | "skill" | "command" | "agent" | "knowledge" | "script"
 
 type ShowAgentResponse = {
   type: "agent"
@@ -37,10 +37,15 @@ type ShowCommandResponse = {
 type SearchHit = {
   type: AssetType | "registry"
   openRef?: string
+  sourceKind?: "working" | "mounted" | "installed"
+  registryId?: string
+  editable?: boolean
+  hitSource?: "local" | "registry"
 }
 
 type SearchResponse = {
   hits?: SearchHit[]
+  source?: "local" | "registry" | "both"
 }
 
 function isShowAgentResponse(value: unknown): value is ShowAgentResponse {
@@ -185,19 +190,24 @@ type PluginClient = {
 export const AgentikitPlugin: Plugin = async ({ client }) => ({
   tool: {
     akm_search: tool({
-      description: "Search your stash of tools, skills, commands, agents, and knowledge. Use this tool anytime you need to find resources for a task.",
+      description: "Search your stash of tools, skills, commands, agents, scripts, and knowledge. Use this tool anytime you need to find resources for a task.",
       args: {
         query: tool.schema.string().describe("Case-insensitive substring search."),
         type: tool.schema
-          .enum(["tool", "skill", "command", "agent", "knowledge", "any"])
+          .enum(["tool", "skill", "command", "agent", "knowledge", "script", "any"])
           .optional()
           .describe("Optional type filter. Defaults to 'any'."),
         limit: tool.schema.number().optional().describe("Maximum number of hits to return. Defaults to 20."),
+        source: tool.schema
+          .enum(["local", "registry", "both"])
+          .optional()
+          .describe("Search source. 'local' searches stash dirs, 'registry' searches npm/GitHub, 'both' searches all. Defaults to 'local'."),
       },
-      async execute({ query, type, limit }) {
+      async execute({ query, type, limit, source }) {
         const args = ["search", query]
         if (type) args.push("--type", type)
         if (limit) args.push("--limit", String(limit))
+        if (source) args.push("--source", source)
         return runCli(args)
       },
     }),
@@ -230,6 +240,22 @@ export const AgentikitPlugin: Plugin = async ({ client }) => ({
       args: {},
       async execute() {
         return runCli(["index"])
+      },
+    }),
+    akm_add: tool({
+      description: "Install a kit from npm or GitHub into the stash registry. Installed kits become searchable alongside local assets.",
+      args: {
+        package_ref: tool.schema.string().describe("Package reference: npm package name, or github:<owner>/<repo>."),
+      },
+      async execute({ package_ref }) {
+        return runCli(["add", package_ref])
+      },
+    }),
+    akm_list: tool({
+      description: "List all kits installed from the registry.",
+      args: {},
+      async execute() {
+        return runCli(["list"])
       },
     }),
     akm_agent: tool({

@@ -1,6 +1,6 @@
 # agentikit-opencode
 
-OpenCode plugin for the [Agentikit](https://github.com/itlackey/agentikit) CLI. Registers tools that let your AI agent **search** and **show** extension assets from a stash directory.
+OpenCode plugin for the [Agentikit](https://github.com/itlackey/agentikit) CLI. Registers tools that let your AI agent **search**, **show**, and **manage** extension assets from stash directories and registries.
 
 ## Installation
 
@@ -21,6 +21,8 @@ Add to your OpenCode config (`opencode.json`):
 | `akm_index` | Build or rebuild the search index |
 | `akm_agent` | Dispatch a stash `agent:*` into OpenCode using the stash prompt and metadata |
 | `akm_cmd` | Execute a stash `command:*` template in OpenCode via SDK session prompting |
+| `akm_add` | Install kits from npm or GitHub registries |
+| `akm_list` | List installed registry kits |
 
 ## Agent Dispatch
 
@@ -78,11 +80,14 @@ Expected layout:
 ```
 $AKM_STASH_DIR/
 ├── tools/      # executable scripts (.sh, .ts, .js, .ps1, .cmd, .bat)
+├── scripts/    # general-purpose scripts (.py, .rb, .go, .pl, .php, .lua, .r, .swift, .kt)
 ├── skills/     # skill directories containing SKILL.md
 ├── commands/   # markdown files
 ├── agents/     # markdown files
 └── knowledge/  # markdown files
 ```
+
+Assets are resolved from three source types: **working** (local stash, editable), **mounted** (additional dirs via config), and **installed** (registry kits via `akm add`).
 
 ## Docs
 
