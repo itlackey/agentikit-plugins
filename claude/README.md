@@ -69,16 +69,16 @@ irm https://raw.githubusercontent.com/itlackey/agentikit/main/install.ps1 -OutFi
 
 ## Stash model
 
-Set a stash path via `AGENTIKIT_STASH_DIR`:
+Set a stash path via `AKM_STASH_DIR`:
 
 ```sh
-export AGENTIKIT_STASH_DIR=/abs/path/to/your-stash
+export AKM_STASH_DIR=/abs/path/to/your-stash
 ```
 
 Expected layout:
 
 ```
-$AGENTIKIT_STASH_DIR/
+$AKM_STASH_DIR/
 ├── tools/      # executable scripts (.sh, .ts, .js, .ps1, .cmd, .bat)
 ├── skills/     # skill directories containing SKILL.md
 ├── commands/   # markdown files

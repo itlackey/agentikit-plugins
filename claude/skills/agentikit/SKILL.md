@@ -7,7 +7,7 @@ description: Search, show, dispatch agents, and execute commands from an Agentik
 
 You have access to the `akm` CLI (Agentikit Manager) to manage extension assets from a stash directory.
 
-The stash directory is configured via the `AGENTIKIT_STASH_DIR` environment variable and contains:
+The stash directory is configured via the `AKM_STASH_DIR` environment variable and contains:
 
 - **tools/** — executable scripts (.sh, .ts, .js, .ps1, .cmd, .bat)
 - **skills/** — skill directories containing SKILL.md
