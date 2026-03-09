@@ -37,7 +37,6 @@ type ShowCommandResponse = {
 type SearchHit = {
   type: AssetType | "registry"
   openRef?: string
-  sourceKind?: "working" | "mounted" | "installed"
   registryId?: string
   editable?: boolean
   hitSource?: "local" | "registry"

@@ -17,9 +17,11 @@ The stash directory is configured via the `AKM_STASH_DIR` environment variable a
 - **scripts/** — general-purpose scripts (.py, .rb, .go, .pl, .php, .lua, .r, .swift, .kt)
 
 Assets are resolved from multiple sources in priority order:
-1. **working** — your local stash directory (editable)
+1. **working** (origin: `local`) — your local stash directory (editable)
 2. **mounted** — additional directories via `mountedStashDirs` config
 3. **installed** — kits installed from the registry via `akm add`
+
+Refs use the format `[origin//]type:name`. Simple refs like `tool:deploy.sh` search all sources. Origin-qualified refs like `npm:@scope/pkg//tool:deploy.sh` or `local//tool:deploy.sh` target a specific source.
 
 ## Commands
 
@@ -131,7 +133,7 @@ When the user asks you to dispatch, run, or use a stash agent:
    ```bash
    akm search "<query>" --type agent --limit 1
    ```
-   Extract `openRef` from the first hit in the `hits` array.
+   Extract `openRef` from the first hit in the `hits` array. Refs use the format `[origin//]type:name` (e.g., `tool:deploy.sh`, `npm:@scope/pkg//tool:deploy.sh`).
 
 2. **Fetch the agent payload:**
    ```bash
@@ -205,7 +207,7 @@ When the user asks you to run or execute a stash command:
    ```bash
    akm search "<query>" --type command --limit 1
    ```
-   Extract `openRef` from the first hit.
+   Extract `openRef` from the first hit. Refs use the format `[origin//]type:name`.
 
 2. **Fetch the command payload:**
    ```bash
