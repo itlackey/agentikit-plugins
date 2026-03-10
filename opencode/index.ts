@@ -1,5 +1,5 @@
 import { type Plugin, tool } from "@opencode-ai/plugin"
-import { execFileSync } from "node:child_process"
+import { execFileSync, execSync } from "node:child_process"
 
 function runCli(args: string[]): string {
   try {
@@ -24,6 +24,8 @@ type ShowAgentResponse = {
   prompt?: string
   toolPolicy?: unknown
   modelHint?: unknown
+  registryId?: string
+  editable?: boolean
 }
 
 type ShowCommandResponse = {
@@ -32,6 +34,19 @@ type ShowCommandResponse = {
   path: string
   description?: string
   template?: string
+  registryId?: string
+  editable?: boolean
+  agent?: string
+}
+
+type ShowToolResponse = {
+  type: "tool"
+  name: string
+  path?: string
+  description?: string
+  runCmd?: string
+  registryId?: string
+  editable?: boolean
 }
 
 type SearchHit = {
@@ -40,11 +55,29 @@ type SearchHit = {
   registryId?: string
   editable?: boolean
   hitSource?: "local" | "registry"
+  name?: string
+  description?: string
+  score?: number
+  whyMatched?: string
+  runCmd?: string
+  kind?: string
+  usage?: string
 }
 
 type SearchResponse = {
   hits?: SearchHit[]
   source?: "local" | "registry" | "both"
+  stashDir?: string
+  timing?: number
+  warnings?: string[]
+  tip?: string
+  usageGuide?: string
+}
+
+function isShowToolResponse(value: unknown): value is ShowToolResponse {
+  return !!value
+    && typeof value === "object"
+    && (value as { type?: unknown }).type === "tool"
 }
 
 function isShowAgentResponse(value: unknown): value is ShowAgentResponse {
@@ -410,6 +443,86 @@ export const AgentikitPlugin: Plugin = async ({ client }) => ({
           renderedTemplate: rendered,
           text: extractText(promptResponse.data.parts),
         })
+      },
+    }),
+    akm_config: tool({
+      description: "View or update Agentikit configuration settings.",
+      args: {
+        action: tool.schema.enum(["get", "set", "list"]).describe("Config action: 'get' a key, 'set' a key/value, or 'list' all settings."),
+        key: tool.schema.string().optional().describe("Config key (required for get/set)."),
+        value: tool.schema.string().optional().describe("Config value (required for set)."),
+      },
+      async execute({ action, key, value }) {
+        const args = ["config", action]
+        if (key) args.push(key)
+        if (value) args.push(value)
+        return runCli(args)
+      },
+    }),
+    akm_run: tool({
+      description: "Execute a stash tool or script by ref. Resolves via search, fetches metadata via show, and runs the runCmd.",
+      args: {
+        ref: tool.schema.string().optional().describe("Tool ref from akm_search (e.g. tool:deploy.sh)."),
+        query: tool.schema.string().optional().describe("If ref is omitted, resolve best matching stash tool for this query."),
+        args: tool.schema.string().optional().describe("Arguments to append to the runCmd."),
+      },
+      async execute({ ref, query, args: runArgs }) {
+        const resolved = resolveRefInput({ ref, query }, "tool")
+        if (!resolved.ok) return JSON.stringify(resolved)
+
+        const shownRaw = runCli(["show", resolved.ref])
+        const shown = parseCliJson<ShowToolResponse | { type: string }>(shownRaw)
+        if (isCliError(shown)) return JSON.stringify(shown)
+
+        if (!isShowToolResponse(shown)) {
+          return JSON.stringify({
+            ok: false,
+            error: `Ref ${resolved.ref} is not a tool payload from akm_show.`,
+          })
+        }
+
+        if (!shown.runCmd || !shown.runCmd.trim()) {
+          return JSON.stringify({
+            ok: false,
+            error: `Tool ${shown.name} is missing runCmd.`,
+          })
+        }
+
+        let cmd = shown.runCmd
+        if (runArgs && runArgs.trim()) {
+          cmd = `${cmd} ${runArgs.trim()}`
+        }
+
+        try {
+          const output = execSync(cmd, {
+            encoding: "utf8",
+            timeout: 120_000,
+          })
+          return JSON.stringify({
+            ok: true,
+            ref: resolved.ref,
+            tool: shown.name,
+            runCmd: cmd,
+            output,
+          })
+        } catch (error: unknown) {
+          const message = error instanceof Error ? error.message : String(error)
+          return JSON.stringify({
+            ok: false,
+            error: `Failed to execute runCmd for ${shown.name}: ${message}`,
+          })
+        }
+      },
+    }),
+    akm_submit: tool({
+      description: "Submit a kit to the Agentikit registry.",
+      args: {
+        dry_run: tool.schema.boolean().optional().describe("If true, perform a dry run without actually submitting."),
+      },
+      async execute({ dry_run }) {
+        const args = ["submit"]
+        if (dry_run) args.push("--dry-run")
+        return runCli(args)
       },
     }),
   },

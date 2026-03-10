@@ -1,10 +1,12 @@
 import { describe, it, expect, mock, beforeEach } from "bun:test"
 import type { PluginInput } from "@opencode-ai/plugin"
 
-// Mock execFileSync before importing the plugin
+// Mock execFileSync and execSync before importing the plugin
 const mockExecFileSync = mock(() => "mock output")
+const mockExecSync = mock(() => "exec output")
 mock.module("node:child_process", () => ({
   execFileSync: mockExecFileSync,
+  execSync: mockExecSync,
 }))
 
 const { AgentikitPlugin } = await import("../opencode/index.ts")
@@ -40,6 +42,8 @@ describe("agentikit-opencode plugin", () => {
   beforeEach(() => {
     mockExecFileSync.mockClear()
     mockExecFileSync.mockReturnValue("mock output")
+    mockExecSync.mockClear()
+    mockExecSync.mockReturnValue("exec output")
   })
 
   describe("plugin loading", () => {
@@ -63,7 +67,10 @@ describe("agentikit-opencode plugin", () => {
       expect(toolNames).toContain("akm_cmd")
       expect(toolNames).toContain("akm_add")
       expect(toolNames).toContain("akm_list")
-      expect(toolNames).toHaveLength(7)
+      expect(toolNames).toContain("akm_config")
+      expect(toolNames).toContain("akm_run")
+      expect(toolNames).toContain("akm_submit")
+      expect(toolNames).toHaveLength(10)
     })
   })
 
@@ -570,6 +577,409 @@ describe("agentikit-opencode plugin", () => {
       expect(parsed.ok).toBe(true)
       expect(parsed.ref).toBe("command:review.md")
       expect(parsed.usedSubtask).toBe(true)
+    })
+  })
+
+  describe("expanded response types", () => {
+    it("search response includes timing, warnings, tip, and usageGuide", async () => {
+      const searchResponse = JSON.stringify({
+        hits: [{ type: "tool", openRef: "tool:deploy.sh" }],
+        source: "local",
+        stashDir: "/home/user/.agentikit/stash",
+        timing: 42,
+        warnings: ["Index is stale"],
+        tip: "Run akm index to refresh",
+        usageGuide: "Use akm show <ref> to view details",
+      })
+      mockExecFileSync.mockReturnValue(searchResponse)
+
+      const hooks = await AgentikitPlugin(createPluginInput())
+      const result = await hooks.tool!.akm_search.execute(
+        { query: "deploy" } as any,
+        {} as any,
+      )
+
+      const parsed = JSON.parse(result)
+      expect(parsed.stashDir).toBe("/home/user/.agentikit/stash")
+      expect(parsed.timing).toBe(42)
+      expect(parsed.warnings).toEqual(["Index is stale"])
+      expect(parsed.tip).toBe("Run akm index to refresh")
+      expect(parsed.usageGuide).toBe("Use akm show <ref> to view details")
+    })
+
+    it("search hits include name, description, score, whyMatched, runCmd, kind", async () => {
+      const searchResponse = JSON.stringify({
+        hits: [{
+          type: "tool",
+          openRef: "tool:deploy.sh",
+          name: "deploy.sh",
+          description: "Deploy the application",
+          score: 0.95,
+          whyMatched: "name match",
+          runCmd: "bash deploy.sh",
+          kind: "shell",
+          usage: "deploy.sh [env]",
+        }],
+      })
+      mockExecFileSync.mockReturnValue(searchResponse)
+
+      const hooks = await AgentikitPlugin(createPluginInput())
+      const result = await hooks.tool!.akm_search.execute(
+        { query: "deploy" } as any,
+        {} as any,
+      )
+
+      const parsed = JSON.parse(result)
+      const hit = parsed.hits[0]
+      expect(hit.name).toBe("deploy.sh")
+      expect(hit.description).toBe("Deploy the application")
+      expect(hit.score).toBe(0.95)
+      expect(hit.whyMatched).toBe("name match")
+      expect(hit.runCmd).toBe("bash deploy.sh")
+      expect(hit.kind).toBe("shell")
+      expect(hit.usage).toBe("deploy.sh [env]")
+    })
+
+    it("show agent response includes registryId and editable", async () => {
+      const agentResponse = JSON.stringify({
+        type: "agent",
+        name: "reviewer.md",
+        path: "/stash/agents/reviewer.md",
+        prompt: "You are a code reviewer.",
+        registryId: "agentikit-registry/reviewer",
+        editable: false,
+      })
+      mockExecFileSync.mockReturnValue(agentResponse)
+
+      const hooks = await AgentikitPlugin(createPluginInput())
+      const result = await hooks.tool!.akm_show.execute(
+        { ref: "agent:reviewer.md" } as any,
+        {} as any,
+      )
+
+      const parsed = JSON.parse(result)
+      expect(parsed.type).toBe("agent")
+      expect(parsed.registryId).toBe("agentikit-registry/reviewer")
+      expect(parsed.editable).toBe(false)
+    })
+
+    it("show command response includes registryId, editable, and agent", async () => {
+      const commandResponse = JSON.stringify({
+        type: "command",
+        name: "lint.md",
+        path: "/stash/commands/lint.md",
+        template: "Run lint on $1",
+        registryId: "agentikit-registry/lint",
+        editable: true,
+        agent: "build",
+      })
+      mockExecFileSync.mockReturnValue(commandResponse)
+
+      const hooks = await AgentikitPlugin(createPluginInput())
+      const result = await hooks.tool!.akm_show.execute(
+        { ref: "command:lint.md" } as any,
+        {} as any,
+      )
+
+      const parsed = JSON.parse(result)
+      expect(parsed.type).toBe("command")
+      expect(parsed.registryId).toBe("agentikit-registry/lint")
+      expect(parsed.editable).toBe(true)
+      expect(parsed.agent).toBe("build")
+    })
+  })
+
+  describe("akm_config tool", () => {
+    it("tool exists with description and execute function", async () => {
+      const hooks = await AgentikitPlugin(createPluginInput())
+      const config = hooks.tool!.akm_config
+      expect(config).toBeDefined()
+      expect(config.description).toBeTruthy()
+      expect(typeof config.execute).toBe("function")
+    })
+
+    it("config list calls CLI as 'akm config list'", async () => {
+      const hooks = await AgentikitPlugin(createPluginInput())
+      await hooks.tool!.akm_config.execute(
+        { action: "list" } as any,
+        {} as any,
+      )
+      expect(mockExecFileSync).toHaveBeenCalledWith(
+        "akm",
+        ["config", "list"],
+        expect.objectContaining({ encoding: "utf8" }),
+      )
+    })
+
+    it("config get calls CLI as 'akm config get <key>'", async () => {
+      const hooks = await AgentikitPlugin(createPluginInput())
+      await hooks.tool!.akm_config.execute(
+        { action: "get", key: "stashDir" } as any,
+        {} as any,
+      )
+      expect(mockExecFileSync).toHaveBeenCalledWith(
+        "akm",
+        ["config", "get", "stashDir"],
+        expect.objectContaining({ encoding: "utf8" }),
+      )
+    })
+
+    it("config set calls CLI as 'akm config set <key> <value>'", async () => {
+      const hooks = await AgentikitPlugin(createPluginInput())
+      await hooks.tool!.akm_config.execute(
+        { action: "set", key: "stashDir", value: "/tmp/stash" } as any,
+        {} as any,
+      )
+      expect(mockExecFileSync).toHaveBeenCalledWith(
+        "akm",
+        ["config", "set", "stashDir", "/tmp/stash"],
+        expect.objectContaining({ encoding: "utf8" }),
+      )
+    })
+
+    it("returns JSON error when CLI fails", async () => {
+      mockExecFileSync.mockImplementation(() => {
+        throw new Error("config read failed")
+      })
+      const hooks = await AgentikitPlugin(createPluginInput())
+      const result = await hooks.tool!.akm_config.execute(
+        { action: "list" } as any,
+        {} as any,
+      )
+      const parsed = JSON.parse(result)
+      expect(parsed.ok).toBe(false)
+      expect(parsed.error).toContain("config read failed")
+    })
+  })
+
+  describe("akm_run tool", () => {
+    it("tool exists with description and execute function", async () => {
+      const hooks = await AgentikitPlugin(createPluginInput())
+      const run = hooks.tool!.akm_run
+      expect(run).toBeDefined()
+      expect(run.description).toBeTruthy()
+      expect(typeof run.execute).toBe("function")
+    })
+
+    it("run by ref executes the runCmd from show response", async () => {
+      mockExecFileSync.mockImplementation((_cmd, args) => {
+        if (args[0] === "show") {
+          return JSON.stringify({
+            type: "tool",
+            name: "deploy.sh",
+            path: "/stash/tools/deploy.sh",
+            runCmd: "cd /stash && bash deploy.sh",
+          })
+        }
+        return "mock output"
+      })
+      mockExecSync.mockReturnValue("deployed successfully")
+
+      const hooks = await AgentikitPlugin(createPluginInput())
+      const result = await hooks.tool!.akm_run.execute(
+        { ref: "tool:deploy.sh" } as any,
+        {} as any,
+      )
+
+      const parsed = JSON.parse(result)
+      expect(parsed.ok).toBe(true)
+      expect(parsed.tool).toBe("deploy.sh")
+      expect(parsed.runCmd).toBe("cd /stash && bash deploy.sh")
+      expect(parsed.output).toBe("deployed successfully")
+      expect(mockExecSync).toHaveBeenCalledWith(
+        "cd /stash && bash deploy.sh",
+        expect.objectContaining({ encoding: "utf8" }),
+      )
+    })
+
+    it("run by query resolves ref via search then show then executes", async () => {
+      mockExecFileSync.mockImplementation((_cmd, args) => {
+        if (args[0] === "search") {
+          return JSON.stringify({
+            hits: [{ type: "tool", openRef: "tool:build.sh" }],
+          })
+        }
+        if (args[0] === "show") {
+          return JSON.stringify({
+            type: "tool",
+            name: "build.sh",
+            path: "/stash/tools/build.sh",
+            runCmd: "bash build.sh",
+          })
+        }
+        return "mock output"
+      })
+      mockExecSync.mockReturnValue("build complete")
+
+      const hooks = await AgentikitPlugin(createPluginInput())
+      const result = await hooks.tool!.akm_run.execute(
+        { query: "build" } as any,
+        {} as any,
+      )
+
+      const parsed = JSON.parse(result)
+      expect(parsed.ok).toBe(true)
+      expect(parsed.tool).toBe("build.sh")
+      expect(parsed.output).toBe("build complete")
+      expect(mockExecFileSync).toHaveBeenCalledWith(
+        "akm",
+        ["search", "build", "--type", "tool", "--limit", "1", "--usage", "none", "--source", "local"],
+        expect.objectContaining({ encoding: "utf8" }),
+      )
+    })
+
+    it("run with args appends args to runCmd", async () => {
+      mockExecFileSync.mockImplementation((_cmd, args) => {
+        if (args[0] === "show") {
+          return JSON.stringify({
+            type: "tool",
+            name: "deploy.sh",
+            path: "/stash/tools/deploy.sh",
+            runCmd: "bash deploy.sh",
+          })
+        }
+        return "mock output"
+      })
+      mockExecSync.mockReturnValue("deployed to prod")
+
+      const hooks = await AgentikitPlugin(createPluginInput())
+      const result = await hooks.tool!.akm_run.execute(
+        { ref: "tool:deploy.sh", args: "--env production" } as any,
+        {} as any,
+      )
+
+      const parsed = JSON.parse(result)
+      expect(parsed.ok).toBe(true)
+      expect(parsed.runCmd).toBe("bash deploy.sh --env production")
+      expect(mockExecSync).toHaveBeenCalledWith(
+        "bash deploy.sh --env production",
+        expect.objectContaining({ encoding: "utf8" }),
+      )
+    })
+
+    it("returns error for non-tool type", async () => {
+      mockExecFileSync.mockImplementation((_cmd, args) => {
+        if (args[0] === "show") {
+          return JSON.stringify({
+            type: "agent",
+            name: "coach.md",
+            path: "/stash/agents/coach.md",
+            prompt: "You are a coach.",
+          })
+        }
+        return "mock output"
+      })
+
+      const hooks = await AgentikitPlugin(createPluginInput())
+      const result = await hooks.tool!.akm_run.execute(
+        { ref: "agent:coach.md" } as any,
+        {} as any,
+      )
+
+      const parsed = JSON.parse(result)
+      expect(parsed.ok).toBe(false)
+      expect(parsed.error).toContain("not a tool payload")
+    })
+
+    it("returns error when runCmd is missing", async () => {
+      mockExecFileSync.mockImplementation((_cmd, args) => {
+        if (args[0] === "show") {
+          return JSON.stringify({
+            type: "tool",
+            name: "broken.sh",
+            path: "/stash/tools/broken.sh",
+          })
+        }
+        return "mock output"
+      })
+
+      const hooks = await AgentikitPlugin(createPluginInput())
+      const result = await hooks.tool!.akm_run.execute(
+        { ref: "tool:broken.sh" } as any,
+        {} as any,
+      )
+
+      const parsed = JSON.parse(result)
+      expect(parsed.ok).toBe(false)
+      expect(parsed.error).toContain("missing runCmd")
+    })
+
+    it("returns error when execution fails", async () => {
+      mockExecFileSync.mockImplementation((_cmd, args) => {
+        if (args[0] === "show") {
+          return JSON.stringify({
+            type: "tool",
+            name: "fail.sh",
+            path: "/stash/tools/fail.sh",
+            runCmd: "bash fail.sh",
+          })
+        }
+        return "mock output"
+      })
+      mockExecSync.mockImplementation(() => {
+        throw new Error("exit code 1: script failed")
+      })
+
+      const hooks = await AgentikitPlugin(createPluginInput())
+      const result = await hooks.tool!.akm_run.execute(
+        { ref: "tool:fail.sh" } as any,
+        {} as any,
+      )
+
+      const parsed = JSON.parse(result)
+      expect(parsed.ok).toBe(false)
+      expect(parsed.error).toContain("Failed to execute runCmd")
+      expect(parsed.error).toContain("exit code 1")
+    })
+  })
+
+  describe("akm_submit tool", () => {
+    it("tool exists with description and execute function", async () => {
+      const hooks = await AgentikitPlugin(createPluginInput())
+      const submit = hooks.tool!.akm_submit
+      expect(submit).toBeDefined()
+      expect(submit.description).toBeTruthy()
+      expect(typeof submit.execute).toBe("function")
+    })
+
+    it("submit calls CLI as 'akm submit'", async () => {
+      const hooks = await AgentikitPlugin(createPluginInput())
+      await hooks.tool!.akm_submit.execute(
+        {} as any,
+        {} as any,
+      )
+      expect(mockExecFileSync).toHaveBeenCalledWith(
+        "akm",
+        ["submit"],
+        expect.objectContaining({ encoding: "utf8" }),
+      )
+    })
+
+    it("submit with dry_run calls CLI as 'akm submit --dry-run'", async () => {
+      const hooks = await AgentikitPlugin(createPluginInput())
+      await hooks.tool!.akm_submit.execute(
+        { dry_run: true } as any,
+        {} as any,
+      )
+      expect(mockExecFileSync).toHaveBeenCalledWith(
+        "akm",
+        ["submit", "--dry-run"],
+        expect.objectContaining({ encoding: "utf8" }),
+      )
+    })
+
+    it("returns JSON error when CLI fails", async () => {
+      mockExecFileSync.mockImplementation(() => {
+        throw new Error("submit permission denied")
+      })
+      const hooks = await AgentikitPlugin(createPluginInput())
+      const result = await hooks.tool!.akm_submit.execute(
+        {} as any,
+        {} as any,
+      )
+      const parsed = JSON.parse(result)
+      expect(parsed.ok).toBe(false)
+      expect(parsed.error).toContain("submit permission denied")
     })
   })
 })
