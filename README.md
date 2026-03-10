@@ -2,9 +2,32 @@
 
 Platform-specific plugins for the [Agentikit](https://github.com/itlackey/agentikit) CLI. Both packages wrap the `akm` CLI to **search**, **show**, **dispatch agents**, and **execute commands** from a stash directory.
 
-## Packages
+## OpenCode
 
-### agentikit-claude
+OpenCode plugin that registers tools that call the akm CLI.
+
+Add to your OpenCode config (`opencode.json`):
+
+```json
+{
+  "plugin": ["agentikit-opencode"]
+}
+```
+
+Provides ten tools:
+- `akm_search` — search the stash
+- `akm_show` — show a stash asset by ref
+- `akm_index` — build/rebuild the search index
+- `akm_agent` — dispatch stash `agent:*` resources into OpenCode sessions
+- `akm_cmd` — execute stash `command:*` templates through OpenCode SDK sessions
+- `akm_add` — install kits from npm or GitHub registries
+- `akm_list` — list installed registry kits
+- `akm_config` — show or update akm configuration
+- `akm_run` — execute a stash tool or script via `runCmd`
+- `akm_submit` — submit assets or feedback to the registry
+
+
+### Claude Code
 
 Claude Code plugin providing a skill for stash asset management, dynamic agent dispatch, and command execution.
 
@@ -29,34 +52,6 @@ Provides:
 - **Agentikit Skill** — Claude automatically uses the akm CLI when you ask about stash assets
 - **Dynamic agent dispatch** — Claude fetches agent definitions from the stash and spawns subagents on the fly with the agent's prompt, tool constraints, and task
 - **Command execution** — Claude resolves command templates, renders argument placeholders (`$ARGUMENTS`, `$1`, `$2`), and executes the result
-
-### agentikit-opencode
-
-OpenCode plugin registering tools that call the akm CLI.
-
-```sh
-npm install agentikit-opencode
-```
-
-Add to your OpenCode config (`opencode.json`):
-
-```json
-{
-  "plugin": ["agentikit-opencode"]
-}
-```
-
-Provides ten tools:
-- `akm_search` — search the stash
-- `akm_show` — show a stash asset by ref
-- `akm_index` — build/rebuild the search index
-- `akm_agent` — dispatch stash `agent:*` resources into OpenCode sessions
-- `akm_cmd` — execute stash `command:*` templates through OpenCode SDK sessions
-- `akm_add` — install kits from npm or GitHub registries
-- `akm_list` — list installed registry kits
-- `akm_config` — show or update akm configuration
-- `akm_run` — execute a stash tool or script via `runCmd`
-- `akm_submit` — submit assets or feedback to the registry
 
 ## Stash model
 
