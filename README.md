@@ -46,7 +46,7 @@ Add to your OpenCode config (`opencode.json`):
 }
 ```
 
-Provides seven tools:
+Provides ten tools:
 - `akm_search` — search the stash
 - `akm_show` — show a stash asset by ref
 - `akm_index` — build/rebuild the search index
@@ -54,19 +54,22 @@ Provides seven tools:
 - `akm_cmd` — execute stash `command:*` templates through OpenCode SDK sessions
 - `akm_add` — install kits from npm or GitHub registries
 - `akm_list` — list installed registry kits
+- `akm_config` — show or update akm configuration
+- `akm_run` — execute a stash tool or script via `runCmd`
+- `akm_submit` — submit assets or feedback to the registry
 
 ## Stash model
 
-Set a stash path via `AKM_STASH_DIR`:
+The stash directory is resolved automatically via a three-tier fallback: `AKM_STASH_DIR` env var (optional override) → `stashDir` in `config.json` → platform default. Set it persistently with:
 
 ```sh
-export AKM_STASH_DIR=/abs/path/to/your-stash
+akm config set stashDir /abs/path/to/your-stash
 ```
 
 Expected layout:
 
 ```
-$AKM_STASH_DIR/
+stash/
 ├── tools/      # executable scripts (.sh, .ts, .js, .ps1, .cmd, .bat)
 ├── scripts/    # general-purpose scripts (.py, .rb, .go, .pl, .php, .lua, .r, .swift, .kt)
 ├── skills/     # skill directories containing SKILL.md
@@ -75,11 +78,11 @@ $AKM_STASH_DIR/
 └── knowledge/  # markdown files
 ```
 
-Assets are resolved from three source types: **working** (local stash, editable), **mounted** (additional dirs via config), and **installed** (registry kits via `akm add`).
+Assets are resolved from three source types: **working** (local stash, read-write), **mounted** (read-only additional dirs via `mountedStashDirs` config), and **installed** (registry kits via `akm add`, read-only).
 
 ## Configuration
 
-Config is stored at `~/.config/agentikit/config.json` (XDG standard).
+Config is stored at `~/.config/agentikit/config.json` (XDG standard). Use `akm config list` to view, `akm config set <key> <value>` to update.
 
 ## Prerequisites
 

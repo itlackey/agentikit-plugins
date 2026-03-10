@@ -7,7 +7,16 @@ description: Search, show, dispatch agents, and execute commands from an Agentik
 
 You have access to the `akm` CLI (Agentikit Manager) to manage extension assets from a stash directory.
 
-The stash directory is configured via the `AKM_STASH_DIR` environment variable and contains:
+### Stash directory resolution
+
+The stash directory is resolved using a three-tier fallback:
+1. **Environment variable** — `AKM_STASH_DIR` (optional override)
+2. **Config file** — `stashDir` field in `$XDG_CONFIG_HOME/agentikit/config.json`
+3. **Platform default** — OS-specific default location
+
+Set the stash directory persistently with `akm config set stashDir /path/to/stash` (preferred). The `AKM_STASH_DIR` env var is only needed as a temporary override.
+
+The stash directory contains:
 
 - **tools/** — executable scripts (.sh, .ts, .js, .ps1, .cmd, .bat)
 - **skills/** — skill directories containing SKILL.md
@@ -16,10 +25,20 @@ The stash directory is configured via the `AKM_STASH_DIR` environment variable a
 - **knowledge/** — markdown knowledge files
 - **scripts/** — general-purpose scripts (.py, .rb, .go, .pl, .php, .lua, .r, .swift, .kt)
 
+### Multi-source resolution
+
 Assets are resolved from multiple sources in priority order:
-1. **working** (origin: `local`) — your local stash directory (editable)
-2. **mounted** — additional directories via `mountedStashDirs` config
-3. **installed** — kits installed from the registry via `akm add`
+1. **working** (origin: `local`) — your local stash directory (read-write)
+2. **mounted** — read-only additional directories configured via `mountedStashDirs` in config
+3. **installed** — kits installed from the registry via `akm add` (read-only)
+
+Mounted stash directories let you share curated asset collections across projects without copying files. Configure them with `akm config set mountedStashDirs '["/path/a","/path/b"]'`.
+
+### Asset classification
+
+Assets are classified using a multi-signal matcher system that considers file extension, directory placement, parent directory name, and (for markdown files) content signals such as frontmatter fields and body patterns. This means assets can be correctly classified even if placed outside their canonical directory.
+
+### Refs
 
 Refs use the format `[origin//]type:name`. Simple refs like `tool:deploy.sh` search all sources. Origin-qualified refs like `npm:@scope/pkg//tool:deploy.sh` or `local//tool:deploy.sh` target a specific source.
 
@@ -43,6 +62,8 @@ Find assets using a hybrid search pipeline: semantic embeddings + TF-IDF ranking
 akm search [query] [--type tool|skill|command|agent|knowledge|script|any] [--limit N] [--source local|registry|both]
 ```
 
+The response includes `hits` (ranked results), plus diagnostic fields: `timing` (totalMs, rankMs, embedMs), `warnings` (string array of non-fatal issues), and `tip` (contextual usage hint).
+
 ### Show an asset
 
 Retrieve the full content/payload of an asset using its ref from search results.
@@ -55,9 +76,15 @@ Returns type-specific payloads:
 - **skill** → full SKILL.md content
 - **command** → markdown template + description
 - **agent** → prompt + description, toolPolicy, modelHint
-- **tool** → execution command and kind
+- **tool** → execution command, kind, and runCmd
 - **knowledge** → full markdown content (supports view modes: toc, frontmatter, section, lines)
-- **script** → execution command and interpreter
+- **script** → execution command, interpreter, and runCmd
+
+All show responses include these common fields:
+- `registryId` — registry package identifier (present for installed kit assets)
+- `editable` — boolean indicating whether the asset can be modified (true for working stash, false for mounted/installed)
+- `kind` — ToolKind for tools/scripts: `"bash"`, `"sh"`, `"ps1"`, `"cmd"`, `"bat"`, `"bun"`, `"node"`, `"python"`, `"ruby"`, `"go"`, `"unsupported"`
+- `runCmd` — ready-to-execute command string for tools and scripts (see Tool/Script Execution below)
 
 ### Configuration
 
@@ -72,7 +99,7 @@ akm config providers            # List configured providers
 akm config use <provider>       # Switch active provider
 ```
 
-Configurable keys: `semanticSearch`, `mountedStashDirs`, `embedding`, `llm`.
+Configurable keys: `stashDir`, `semanticSearch`, `mountedStashDirs`, `embedding`, `llm`.
 
 ### Registry Management
 
@@ -233,3 +260,45 @@ You would run:
 akm show command:review.md
 ```
 Then render the template replacing `$1` with `src/main.ts` and `$ARGUMENTS` with `src/main.ts --strict`, and execute the resulting instruction.
+
+## Tool/Script Execution
+
+Tools and scripts in the stash can be executed directly. The `akm show` response for tools and scripts includes a `runCmd` field — a ready-to-execute shell command string.
+
+### Execution workflow
+
+When the user asks you to run or execute a stash tool or script:
+
+1. **Resolve the ref.** If the user gives a direct ref (e.g. `tool:deploy.sh`), use it. Otherwise search:
+   ```bash
+   akm search "<query>" --type tool --limit 1
+   ```
+   Extract `openRef` from the first hit.
+
+2. **Fetch the tool payload:**
+   ```bash
+   akm show <ref>
+   ```
+   Parse the JSON. Verify `type` is `"tool"` or `"script"` and `runCmd` is non-empty.
+
+3. **Execute the command** using the Bash tool with the `runCmd` value:
+   ```bash
+   # runCmd examples by kind:
+   # bash:       cd "/path" && bash "/path/script.sh"
+   # bun (ts):   cd "/path" && bun "/path/script.ts"
+   # node:       cd "/path" && node "/path/script.js"
+   # python:     cd "/path" && python "/path/script.py"
+   # powershell: powershell -ExecutionPolicy Bypass -File "/path/script.ps1"
+   ```
+
+4. **Report results** to the user.
+
+### Example
+
+User: "Run the deploy tool"
+
+You would run:
+```bash
+akm show tool:deploy.sh
+```
+Extract the `runCmd` field from the response and execute it with the Bash tool.

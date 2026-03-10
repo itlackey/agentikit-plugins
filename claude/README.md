@@ -30,6 +30,7 @@ The skill teaches Claude to:
 - **Search & show** assets via `akm search` and `akm show`
 - **Dispatch stash agents** dynamically — Claude fetches an agent's markdown definition (prompt, toolPolicy, modelHint) and spawns a subagent on the fly with those instructions embedded
 - **Execute stash commands** — Claude resolves a command template, renders `$ARGUMENTS`/`$1`/`$2` placeholders, and executes the result
+- **Run tools & scripts** — Claude fetches a tool/script via `akm show`, extracts the `runCmd` field, and executes it directly
 
 ### Dynamic agent dispatch
 
@@ -69,16 +70,16 @@ irm https://raw.githubusercontent.com/itlackey/agentikit/main/install.ps1 -OutFi
 
 ## Stash model
 
-Set a stash path via `AKM_STASH_DIR`:
+The stash directory is resolved automatically via a three-tier fallback: `AKM_STASH_DIR` env var (optional override) → `stashDir` in `config.json` → platform default. Set it persistently with:
 
 ```sh
-export AKM_STASH_DIR=/abs/path/to/your-stash
+akm config set stashDir /abs/path/to/your-stash
 ```
 
 Expected layout:
 
 ```
-$AKM_STASH_DIR/
+stash/
 ├── tools/      # executable scripts (.sh, .ts, .js, .ps1, .cmd, .bat)
 ├── scripts/    # general-purpose scripts (.py, .rb, .go, .pl, .php, .lua, .r, .swift, .kt)
 ├── skills/     # skill directories containing SKILL.md
@@ -87,7 +88,7 @@ $AKM_STASH_DIR/
 └── knowledge/  # markdown files
 ```
 
-Assets are resolved from three source types: **working** (local stash, editable), **mounted** (additional dirs via config), and **installed** (registry kits via `akm add`).
+Assets are resolved from three source types: **working** (local stash, read-write), **mounted** (read-only additional dirs via `mountedStashDirs` config), and **installed** (registry kits via `akm add`, read-only).
 
 ## Docs
 
