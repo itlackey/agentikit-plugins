@@ -351,10 +351,11 @@ export const AgentikitPlugin: Plugin = async ({ client }) => ({
       },
       async execute({ package_ref, all, force }) {
         const args = ["update"]
+        const packageRef = package_ref?.trim()
         if (all) {
           args.push("--all")
-        } else if (package_ref?.trim()) {
-          args.push(package_ref.trim())
+        } else if (packageRef) {
+          args.push(packageRef)
         } else {
           return JSON.stringify({ ok: false, error: "Provide 'package_ref' or set 'all' to true." })
         }
