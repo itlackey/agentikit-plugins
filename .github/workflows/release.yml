@@ -100,8 +100,6 @@ jobs:
       - name: Publish akm-opencode
         working-directory: opencode
         run: npm publish --provenance --access public
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
   github-release:
     needs: [version, publish-opencode]

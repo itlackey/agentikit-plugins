@@ -20,7 +20,7 @@
   "bugs": {
     "url": "https://github.com/itlackey/agentikit-plugins/issues"
   },
-  "license": "CC-BY-4.0",
+  "license": "MPL-2.0",
   "files": [
     ".claude-plugin",
     "skills",
