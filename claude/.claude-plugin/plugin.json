@@ -1,7 +1,7 @@
 {
   "name": "akm CLI",
   "description": "Search, show, and manage akm stash assets from local directories and registries.",
-  "version": "0.0.18",
+  "version": "0.0.19",
   "author": {
     "name": "itlackey",
     "url": "https://github.com/itlackey"

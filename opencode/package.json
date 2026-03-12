@@ -1,6 +1,6 @@
 {
   "name": "akm-opencode",
-  "version": "0.0.18",
+  "version": "0.0.19",
   "type": "module",
   "description": "OpenCode plugin for Agentikit - search and show extension assets via the akm CLI.",
   "keywords": [
