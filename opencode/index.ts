@@ -1,9 +1,43 @@
 import { type Plugin, tool } from "@opencode-ai/plugin"
 import { execFileSync, execSync } from "node:child_process"
+import { platform } from "node:os"
+
+let akmVerified = false
+
+function ensureAkmInstalled(): void {
+  if (akmVerified) return
+  try {
+    execFileSync("akm", ["--version"], { encoding: "utf8", timeout: 10_000 })
+    akmVerified = true
+  } catch {
+    // akm not found, attempt install
+    try {
+      const os = platform()
+      if (os === "win32") {
+        execSync(
+          'powershell -Command "irm https://raw.githubusercontent.com/itlackey/agentikit/main/install.ps1 -OutFile install.ps1; ./install.ps1"',
+          { encoding: "utf8", timeout: 120_000, stdio: "pipe" },
+        )
+      } else {
+        execSync(
+          "curl -fsSL https://raw.githubusercontent.com/itlackey/agentikit/main/install.sh | bash",
+          { encoding: "utf8", timeout: 120_000, stdio: "pipe" },
+        )
+      }
+      // Verify install succeeded
+      execFileSync("akm", ["--version"], { encoding: "utf8", timeout: 10_000 })
+      akmVerified = true
+    } catch {
+      // Install failed — let the original error propagate from runCli
+      akmVerified = true // Don't retry install on every call
+    }
+  }
+}
 
 function runCli(args: string[]): string {
+  ensureAkmInstalled()
   try {
-    return execFileSync("akm", args, {
+    return execFileSync("akm", [...args, "--format", "json"], {
       encoding: "utf8",
       timeout: 60_000,
     })
@@ -24,8 +58,10 @@ type ShowAgentResponse = {
   prompt?: string
   toolPolicy?: unknown
   modelHint?: unknown
-  registryId?: string
   editable?: boolean
+  origin?: string | null
+  action?: string
+  editHint?: string
 }
 
 type ShowCommandResponse = {
@@ -34,55 +70,58 @@ type ShowCommandResponse = {
   path: string
   description?: string
   template?: string
-  registryId?: string
   editable?: boolean
   agent?: string
+  origin?: string | null
+  action?: string
+  parameters?: string[]
+  editHint?: string
 }
 
 type ShowToolResponse = {
-  type: "tool"
+  type: "tool" | "script"
   name: string
   path?: string
   description?: string
-  runCmd?: string
-  registryId?: string
+  run?: string
+  setup?: string
+  cwd?: string
   editable?: boolean
+  origin?: string | null
+  action?: string
+  editHint?: string
 }
 
 type SearchHit = {
   type: AssetType | "registry"
-  openRef?: string
-  installRef?: string
-  installCmd?: string
+  ref?: string
   id?: string
-  registryId?: string
   editable?: boolean
-  hitSource?: "local" | "registry"
-  source?: "npm" | "github"
   name?: string
-  title?: string
   description?: string
   score?: number
-  whyMatched?: string
-  runCmd?: string
-  kind?: string
-  usage?: string
+  whyMatched?: string[]
+  run?: string
+  origin?: string | null
+  size?: string
+  action?: string
+  editHint?: string
+  curated?: boolean
 }
 
 type SearchResponse = {
   hits?: SearchHit[]
   source?: "local" | "registry" | "both"
   stashDir?: string
-  timing?: number
+  timing?: { totalMs?: number; rankMs?: number; embedMs?: number }
   warnings?: string[]
   tip?: string
-  usageGuide?: string
 }
 
 function isShowToolResponse(value: unknown): value is ShowToolResponse {
   return !!value
     && typeof value === "object"
-    && (value as { type?: unknown }).type === "tool"
+    && ((value as { type?: unknown }).type === "tool" || (value as { type?: unknown }).type === "script")
 }
 
 function isShowAgentResponse(value: unknown): value is ShowAgentResponse {
@@ -155,16 +194,16 @@ function resolveRefInput(input: { ref?: string; query?: string }, type: AssetTyp
     return { ok: false, error: "Provide either 'ref' or 'query'." }
   }
 
-  const raw = runCli(["search", query, "--type", type, "--limit", "1", "--usage", "none", "--source", "local"])
+  const raw = runCli(["search", query, "--type", type, "--limit", "1", "--detail", "normal", "--source", "local"])
   const parsed = parseCliJson<SearchResponse>(raw)
   if (isCliError(parsed)) return parsed
 
-  const openRef = parsed.hits?.[0]?.openRef
-  if (!openRef) {
+  const ref = parsed.hits?.[0]?.ref
+  if (!ref) {
     return { ok: false, error: `No ${type} match found for query '${query}'.` }
   }
 
-  return { ok: true, ref: openRef }
+  return { ok: true, ref }
 }
 
 async function ensureTargetSessionID(input: {
@@ -209,7 +248,6 @@ function createSearchArgs(input: {
   type?: AssetType | "any"
   limit?: number
   source?: "local" | "registry" | "both"
-  usage?: "none" | "both" | "item" | "guide"
   defaultSource?: "local" | "registry" | "both"
 }): string[] {
   const args = ["search", input.query]
@@ -220,7 +258,7 @@ function createSearchArgs(input: {
   } else if (input.defaultSource) {
     args.push("--source", input.defaultSource)
   }
-  if (input.usage) args.push("--usage", input.usage)
+  args.push("--detail", "normal")
   return args
 }
 
@@ -259,13 +297,9 @@ export const AgentikitPlugin: Plugin = async ({ client }) => ({
           .enum(["local", "registry", "both"])
           .optional()
           .describe("Search source. 'local' searches stash dirs, 'registry' searches npm/GitHub, 'both' searches all. Defaults to 'local'."),
-        usage: tool.schema
-          .enum(["none", "both", "item", "guide"])
-          .optional()
-          .describe("Usage metadata mode. Registry searches often work best with 'item' or 'none'."),
       },
-      async execute({ query, type, limit, source, usage }) {
-        return runCli(createSearchArgs({ query, type, limit, source, usage }))
+      async execute({ query, type, limit, source }) {
+        return runCli(createSearchArgs({ query, type, limit, source }))
       },
     }),
     akm_registry_search: tool({
@@ -277,13 +311,9 @@ export const AgentikitPlugin: Plugin = async ({ client }) => ({
           .optional()
           .describe("Optional asset type filter. Defaults to 'any'."),
         limit: tool.schema.number().optional().describe("Maximum number of registry hits to return. Defaults to 20."),
-        usage: tool.schema
-          .enum(["none", "both", "item", "guide"])
-          .optional()
-          .describe("Usage metadata mode. Defaults to the CLI behavior when omitted."),
       },
-      async execute({ query, type, limit, usage }) {
-        return runCli(createSearchArgs({ query, type, limit, usage, defaultSource: "registry" }))
+      async execute({ query, type, limit }) {
+        return runCli(createSearchArgs({ query, type, limit, defaultSource: "registry" }))
       },
     }),
     akm_show: tool({
@@ -303,10 +333,14 @@ export const AgentikitPlugin: Plugin = async ({ client }) => ({
       },
       async execute({ ref, view_mode, heading, start_line, end_line }) {
         const args = ["show", ref]
-        if (view_mode) args.push("--view", view_mode)
-        if (heading) args.push("--heading", heading)
-        if (start_line != null) args.push("--start", String(start_line))
-        if (end_line != null) args.push("--end", String(end_line))
+        if (view_mode) {
+          args.push(view_mode)
+          if (view_mode === "section" && heading) args.push(heading)
+          if (view_mode === "lines") {
+            if (start_line != null) args.push(String(start_line))
+            if (end_line != null) args.push(String(end_line))
+          }
+        }
         return runCli(args)
       },
     }),
@@ -549,14 +583,14 @@ export const AgentikitPlugin: Plugin = async ({ client }) => ({
       },
     }),
     akm_run: tool({
-      description: "Execute a stash tool or script by ref. Resolves via search, fetches metadata via show, and runs the runCmd.",
+      description: "Execute a stash tool or script by ref. Resolves via search, fetches metadata via show, and runs the run command.",
       args: {
         ref: tool.schema.string().optional().describe("Tool ref from akm_search (e.g. tool:deploy.sh)."),
         query: tool.schema.string().optional().describe("If ref is omitted, resolve best matching stash tool for this query."),
-        args: tool.schema.string().optional().describe("Arguments to append to the runCmd."),
+        args: tool.schema.string().optional().describe("Arguments to append to the run command."),
       },
       async execute({ ref, query, args: runArgs }) {
-        const resolved = resolveRefInput({ ref, query }, "tool")
+        const resolved = resolveRefInput({ ref, query }, "script")
         if (!resolved.ok) return JSON.stringify(resolved)
 
         const shownRaw = runCli(["show", resolved.ref])
@@ -570,14 +604,14 @@ export const AgentikitPlugin: Plugin = async ({ client }) => ({
           })
         }
 
-        if (!shown.runCmd || !shown.runCmd.trim()) {
+        if (!shown.run || !shown.run.trim()) {
           return JSON.stringify({
             ok: false,
-            error: `Tool ${shown.name} is missing runCmd.`,
+            error: `Tool ${shown.name} is missing run command.`,
           })
         }
 
-        let cmd = shown.runCmd
+        let cmd = shown.run
         if (runArgs && runArgs.trim()) {
           cmd = `${cmd} ${runArgs.trim()}`
         }
@@ -591,26 +625,35 @@ export const AgentikitPlugin: Plugin = async ({ client }) => ({
             ok: true,
             ref: resolved.ref,
             tool: shown.name,
-            runCmd: cmd,
+            run: cmd,
             output,
           })
         } catch (error: unknown) {
           const message = error instanceof Error ? error.message : String(error)
           return JSON.stringify({
             ok: false,
-            error: `Failed to execute runCmd for ${shown.name}: ${message}`,
+            error: `Failed to execute run command for ${shown.name}: ${message}`,
           })
         }
       },
     }),
-    akm_submit: tool({
-      description: "Submit a kit to the Agentikit registry.",
-      args: {
-        dry_run: tool.schema.boolean().optional().describe("If true, perform a dry run without actually submitting."),
+    akm_sources: tool({
+      description: "List all resolved stash search paths and their status.",
+      args: {},
+      async execute() {
+        return runCli(["sources"])
       },
-      async execute({ dry_run }) {
-        const args = ["submit"]
-        if (dry_run) args.push("--dry-run")
+    }),
+    akm_upgrade: tool({
+      description: "Check for or install akm CLI updates.",
+      args: {
+        check: tool.schema.boolean().optional().describe("Only check for updates without installing."),
+        force: tool.schema.boolean().optional().describe("Force upgrade even if already on latest version."),
+      },
+      async execute({ check, force }) {
+        const args = ["upgrade"]
+        if (check) args.push("--check")
+        if (force) args.push("--force")
         return runCli(args)
       },
     }),
