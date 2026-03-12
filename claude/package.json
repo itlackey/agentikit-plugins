@@ -1,6 +1,6 @@
 {
   "name": "agentikit-claude",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Claude Code plugin for Agentikit and akm - search, show, and manage stash assets via the akm CLI.",
   "keywords": [
     "claude-code",
